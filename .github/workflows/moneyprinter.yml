@@ -89,8 +89,8 @@ jobs:
               raise ValueError("video_request.json braucht ein Video-Thema")
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
               for name, (environment_name, default) in fields.items():
-                  value = str(request.get(name) or default).replace("\\r", " ").replace("\\n", " ")
-                  f.write(f"{environment_name}={value}\\n")
+                  value = str(request.get(name) or default).replace("\r", " ").replace("\n", " ")
+                  f.write(f"{environment_name}={value}\n")
           PY
       - name: Pruefe API-Zugangsdaten
         shell: bash
