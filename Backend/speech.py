@@ -1,15 +1,12 @@
 """Text-to-speech without TikTok logins or session cookies.
 
-Uses Edge's online neural TTS (no API key). If it is unreachable and
-espeak-ng plus FFmpeg are installed, falls back to local speech synthesis.
+Uses Edge's online neural TTS (no API key). If the service is unreachable,
+the render fails rather than silently substituting robotic offline speech.
 """
 
 import asyncio
 from pathlib import Path
 import re
-import shutil
-import subprocess
-import tempfile
 
 import edge_tts
 
@@ -60,24 +57,6 @@ def resolve_voice(voice: str) -> str:
     )
 
 
-def _fallback_espeak(text: str, voice: str, target: Path) -> None:
-    """Offline fallback for GitHub runners with espeak-ng and FFmpeg."""
-    if not shutil.which("espeak-ng") or not shutil.which("ffmpeg"):
-        raise RuntimeError("Edge-TTS unavailable; install espeak-ng and FFmpeg for a local fallback.")
-    language = voice.split("-")[0]
-    with tempfile.TemporaryDirectory(prefix="moneyprinter-speech-") as directory:
-        wav_path = Path(directory) / "speech.wav"
-        subprocess.run(
-            ["espeak-ng", "-v", language, "-w", str(wav_path), text],
-            check=True, capture_output=True, text=True,
-        )
-        subprocess.run(
-            ["ffmpeg", "-nostdin", "-y", "-loglevel", "error", "-i", str(wav_path),
-             "-codec:a", "libmp3lame", "-q:a", "4", str(target)],
-            check=True, capture_output=True, text=True,
-        )
-
-
 def tts(
     text: str,
     voice: str = "en_us_001",
@@ -100,17 +79,9 @@ def tts(
         log(f"[+] Neural voice saved: {target}", "success")
     except Exception as exc:
         target.unlink(missing_ok=True)
-        log(f"[!] Edge-TTS not available ({exc}); trying local fallback.", "warning")
-        try:
-            _fallback_espeak(text, selected_voice, target)
-        except Exception as fallback_error:
-            target.unlink(missing_ok=True)
-            raise RuntimeError(
-                "Speech synthesis failed with Edge-TTS and local fallback."
-            ) from fallback_error
-        if not target.exists() or target.stat().st_size == 0:
-            raise RuntimeError("Offline speech engine created an empty audio file.")
-        log(f"[+] Offline voice saved: {target}", "success")
+        raise RuntimeError(
+            "Neural speech generation unavailable. Video cancelled rather than using a robotic voice."
+        ) from exc
 
     if play_sound:
         from playsound import playsound

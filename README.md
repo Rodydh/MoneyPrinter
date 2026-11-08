@@ -51,7 +51,7 @@ ollama pull llama3.1:8b
 
 ### Does speech require a TikTok account?
 
-No. This fork uses Edge-TTS neural voices for German, English and other languages. No TikTok session cookie is needed. Edge-TTS uses an online service; if it is unavailable and espeak-ng plus FFmpeg are installed, speech falls back to a local synthetic voice.
+No. This fork uses Edge-TTS neural voices for German, English and other languages. No TikTok session cookie is needed. Edge-TTS uses an online service; if it is unavailable, rendering stops with a clear error instead of producing a robotic fallback voice.
 
 ### My ImageMagick binary is not being detected
 

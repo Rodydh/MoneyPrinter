@@ -10,7 +10,7 @@ There are no mandatory media or voice API keys. Wikimedia Commons provides freel
 
 ## Speech
 
-Speech uses Edge-TTS neural voices without an API key or TikTok account. It requires internet access to Microsoft's speech service; when unavailable, a local espeak-ng + FFmpeg fallback is used if installed (lower voice quality).
+Speech uses Edge-TTS neural voices without an API key or TikTok account. It requires internet access to Microsoft's speech service. If unavailable, rendering stops rather than falling back to robotic offline audio.
 
 The UI offers German female (`de_001`) and male (`de_002`) voices. The original TikTok character/singing voices are not available.
 

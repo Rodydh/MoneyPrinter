@@ -41,7 +41,7 @@ def test_audio_saves_without_tiktok_credentials(monkeypatch, tmp_path):
     assert target.read_bytes() == b"fake-mp3-data"
 
 
-def test_local_fallback_when_edge_unavailable(monkeypatch, tmp_path):
+def test_unavailable_edge_voice_fails_instead_of_using_robotic_fallback(monkeypatch, tmp_path):
     class FailingCommunicate:
         def __init__(self, *_args, **_kwargs):
             pass
@@ -49,13 +49,8 @@ def test_local_fallback_when_edge_unavailable(monkeypatch, tmp_path):
         async def save(self, _filename):
             raise ConnectionError("network unavailable")
 
-    def fake_run(command, **_kwargs):
-        if command[0] == "ffmpeg":
-            Path(command[-1]).write_bytes(b"offline-mp3")
-
     monkeypatch.setattr(speech.edge_tts, "Communicate", FailingCommunicate)
-    monkeypatch.setattr(speech.shutil, "which", lambda _cmd: "/usr/bin/program")
-    monkeypatch.setattr(speech.subprocess, "run", fake_run)
-    target = tmp_path / "offline.mp3"
-    speech.tts("Guten Tag.", "de_001", str(target))
-    assert target.read_bytes() == b"offline-mp3"
+    target = tmp_path / "unavailable.mp3"
+    with pytest.raises(RuntimeError, match="rather than using a robotic voice"):
+        speech.tts("Guten Tag.", "de_001", str(target))
+    assert not target.exists()
