@@ -1,0 +1,135 @@
+name: MoneyPrinter - Test und Video erstellen
+
+on:
+  push:
+    paths:
+      - ".github/workflows/moneyprinter.yml"
+      - "Backend/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Video-Thema (z. B. Geschichte Kurdistans)"
+        required: true
+        type: string
+      voice:
+        description: "TikTok-Sprecherstimme"
+        required: true
+        default: "en_us_001"
+        type: string
+      language_prompt:
+        description: "Optionale Anweisung zur Sprache / zum Skript"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    if: github.event_name == 'push'
+    name: Installation und Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Installiere Python-Abhängigkeiten
+        run: uv sync --group dev
+      - name: Führe Tests aus
+        run: uv run pytest
+
+  render:
+    if: github.event_name == 'workflow_dispatch'
+    name: Short rendern (MP4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+      TIKTOK_SESSION_ID: ${{ secrets.TIKTOK_SESSION_ID }}
+      OLLAMA_MODEL: "qwen2.5:1.5b"
+      OLLAMA_BASE_URL: "http://127.0.0.1:11434"
+      DATABASE_URL: "sqlite:///moneyprinter.db"
+      VIDEO_TOPIC: ${{ inputs.topic }}
+      VIDEO_VOICE: ${{ inputs.voice }}
+      VIDEO_LANGUAGE_PROMPT: ${{ inputs.language_prompt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Pruefe API-Zugangsdaten
+        shell: bash
+        run: |
+          if [ -z "$PEXELS_API_KEY" ] || [ -z "$TIKTOK_SESSION_ID" ]; then
+            echo "::error::Fehlende GitHub Actions Secrets: PEXELS_API_KEY und/oder TIKTOK_SESSION_ID. Unter Settings > Secrets and variables > Actions einrichten."
+            exit 1
+          fi
+      - name: Installiere FFmpeg und ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg imagemagick
+      - name: Installiere Python-Abhängigkeiten
+        run: uv sync
+      - name: Starte Ollama mit kleinem Modell
+        shell: bash
+        run: |
+          curl -fsSL https://ollama.com/install.sh -o /tmp/install-ollama.sh
+          sh /tmp/install-ollama.sh
+          ollama serve >/tmp/ollama.log 2>&1 &
+          for i in $(seq 1 50); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          ollama pull "$OLLAMA_MODEL"
+      - name: Erstelle Video mit MoneyPrinter
+        shell: bash
+        run: |
+          uv run python - <<'PY'
+          import os, sys
+          sys.path.insert(0, "Backend")
+          from dotenv import load_dotenv
+          load_dotenv(override=False)
+          from pipeline import run_generation_pipeline
+
+          topic = os.environ["VIDEO_TOPIC"]
+          voice = os.environ["VIDEO_VOICE"] or "en_us_001"
+          instruction = os.environ["VIDEO_LANGUAGE_PROMPT"].strip()
+          data = {
+              "videoSubject": topic,
+              "aiModel": os.environ["OLLAMA_MODEL"],
+              "voice": voice,
+              "paragraphNumber": 1,
+              "customPrompt": instruction,
+              "subtitlesPosition": "center,bottom",
+              "color": "#FFFF00",
+              "useMusic": False,
+              "automateYoutubeUpload": False,
+              "threads": 2,
+          }
+          output = run_generation_pipeline(
+              data=data,
+              is_cancelled=lambda: False,
+              on_log=lambda message, level: print(f"[{level}] {message}"),
+          )
+          print(f"Video erstellt: {output}")
+          PY
+      - name: Fertiges Video als Download bereitstellen
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MoneyPrinter-Video
+          path: output.mp4
+          if-no-files-found: error
+          retention-days: 7
