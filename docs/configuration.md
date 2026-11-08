@@ -8,8 +8,13 @@ Use `.env.example` as your template.
 
 | Variable | Description |
 |---|---|
-| `TIKTOK_SESSION_ID` | TikTok session cookie (`sessionid`) used for TTS voice endpoint calls. |
 | `PEXELS_API_KEY` | API key used to fetch stock video clips. |
+
+## Speech
+
+Speech uses Edge-TTS neural voices without an API key or TikTok account. It requires internet access to Microsoft's speech service; when unavailable, a local espeak-ng + FFmpeg fallback is used if installed (lower voice quality).
+
+The UI offers German female (`de_001`) and male (`de_002`) voices. The original TikTok character/singing voices are not available.
 
 ## Optional
 

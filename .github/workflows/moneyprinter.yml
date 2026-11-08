@@ -16,7 +16,7 @@ on:
         required: true
         type: string
       voice:
-        description: "TikTok-Sprecherstimme"
+        description: "KI-Sprecherstimme (z. B. de_001 / de_002)"
         required: true
         default: "en_us_001"
         type: string
@@ -47,6 +47,18 @@ jobs:
         run: uv sync --group dev
       - name: Führe Tests aus
         run: uv run pytest
+      - name: Teste eine echte deutsche KI-Stimme (ohne Login)
+        continue-on-error: true
+        run: |
+          uv run python - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, "Backend")
+          from speech import tts
+          tts("Hallo, dies ist ein Test.", "de_001", "smoke-voice.mp3")
+          assert Path("smoke-voice.mp3").stat().st_size > 1000
+          print("Deutsche Stimme erfolgreich erstellt.")
+          PY
 
   render:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[render]'))
@@ -55,7 +67,6 @@ jobs:
     timeout-minutes: 60
     env:
       PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-      TIKTOK_SESSION_ID: ${{ secrets.TIKTOK_SESSION_ID }}
       OLLAMA_MODEL: "qwen2.5:1.5b"
       OLLAMA_BASE_URL: "http://127.0.0.1:11434"
       DATABASE_URL: "sqlite:///moneyprinter.db"
@@ -95,14 +106,14 @@ jobs:
       - name: Pruefe API-Zugangsdaten
         shell: bash
         run: |
-          if [ -z "$PEXELS_API_KEY" ] || [ -z "$TIKTOK_SESSION_ID" ]; then
-            echo "::error::Fehlende GitHub Actions Secrets: PEXELS_API_KEY und/oder TIKTOK_SESSION_ID. Unter Settings > Secrets and variables > Actions einrichten."
+          if [ -z "$PEXELS_API_KEY" ]; then
+            echo "::error::Fehlendes GitHub Actions Secret: PEXELS_API_KEY. Unter Settings > Secrets and variables > Actions einrichten."
             exit 1
           fi
       - name: Installiere FFmpeg und ImageMagick
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg imagemagick
+          sudo apt-get install -y ffmpeg imagemagick espeak-ng
       - name: Installiere Python-Abhängigkeiten
         run: uv sync
       - name: Starte Ollama mit kleinem Modell

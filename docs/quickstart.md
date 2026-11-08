@@ -48,8 +48,9 @@ Copy-Item .env.example .env
 
 Set required values in `.env`:
 
-- `TIKTOK_SESSION_ID`
-- `PEXELS_API_KEY`
+- `PEXELS_API_KEY` (video footage)
+
+The voice uses Edge-TTS; no TikTok session or voice API key is needed.
 
 See [Configuration](configuration.md) for all variables.
 

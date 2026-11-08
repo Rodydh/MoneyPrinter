@@ -15,7 +15,7 @@ from uuid import uuid4
 from gpt import generate_metadata, generate_script, get_search_terms
 from logstream import log
 from search import search_for_stock_videos
-from tiktokvoice import tts
+from speech import tts
 from utils import (
     BASE_DIR,
     PROJECT_ROOT,

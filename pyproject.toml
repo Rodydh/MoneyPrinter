@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "requests==2.31.0",
     "ollama==0.5.1",
+    "edge-tts>=7,<9",
     "moviepy==2.2.1",
     "termcolor==2.4.0",
     "flask==3.0.0",
