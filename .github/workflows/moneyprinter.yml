@@ -8,6 +8,7 @@ on:
       - "tests/**"
       - "pyproject.toml"
       - "uv.lock"
+      - "video_request.json"
   workflow_dispatch:
     inputs:
       topic:
@@ -30,7 +31,7 @@ permissions:
 
 jobs:
   test:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[render]')
     name: Installation und Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -48,7 +49,7 @@ jobs:
         run: uv run pytest
 
   render:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[render]'))
     name: Short rendern (MP4)
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -69,6 +70,28 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Lade Videowunsch aus GitHub-Datei
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          request = json.loads(Path("video_request.json").read_text(encoding="utf-8"))
+          fields = {
+              "topic": ("VIDEO_TOPIC", ""),
+              "voice": ("VIDEO_VOICE", "en_us_001"),
+              "language_prompt": ("VIDEO_LANGUAGE_PROMPT", ""),
+          }
+          if not str(request.get("topic", "")).strip():
+              raise ValueError("video_request.json braucht ein Video-Thema")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
+              for name, (environment_name, default) in fields.items():
+                  value = str(request.get(name) or default).replace("\\r", " ").replace("\\n", " ")
+                  f.write(f"{environment_name}={value}\\n")
+          PY
       - name: Pruefe API-Zugangsdaten
         shell: bash
         run: |
