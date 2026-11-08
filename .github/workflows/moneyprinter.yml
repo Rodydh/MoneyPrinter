@@ -62,6 +62,35 @@ jobs:
           else:
               raise RuntimeError("Wikimedia Commons unavailable or no reusable media found")
           PY
+      - name: Teste echten Wikimedia Video-Download
+        continue-on-error: true
+        run: |
+          uv run python - <<'PY'
+          import subprocess
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, "Backend")
+          from search import search_for_stock_videos
+          from commons_download import download_media
+          found = search_for_stock_videos("mountains", it=10)
+          candidates = [m for m in found if m["type"] == "video"]
+          if not candidates:
+              candidates = found
+          error_messages = []
+          for media in candidates[:5]:
+              try:
+                  path = download_media(media)
+                  subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
+                     "-show_entries", "stream=codec_name,width,height",
+                     "-of", "default=noprint_wrappers=1", path],
+                     check=True, capture_output=True, text=True, timeout=30)
+                  print("Valid video downloaded:", media["title"], Path(path).stat().st_size)
+                  break
+              except Exception as err:
+                  error_messages.append(str(err))
+          else:
+              raise RuntimeError("Could not download a playable media file: " + "; ".join(error_messages))
+          PY
       - name: Teste eine echte deutsche KI-Stimme (ohne Login)
         continue-on-error: true
         run: |
