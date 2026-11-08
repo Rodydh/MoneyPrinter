@@ -47,6 +47,21 @@ jobs:
         run: uv sync --group dev
       - name: Führe Tests aus
         run: uv run pytest
+      - name: Teste Wikimedia Commons Suche ohne API-Key
+        continue-on-error: true
+        run: |
+          uv run python - <<'PY'
+          import sys
+          sys.path.insert(0, "Backend")
+          from search import search_for_stock_videos
+          for query in ("mountains", "forest"):
+              found = search_for_stock_videos(query, it=5)
+              print(query, len(found), [(m["type"], m["title"][:50]) for m in found[:3]])
+              if found:
+                  break
+          else:
+              raise RuntimeError("Wikimedia Commons unavailable or no reusable media found")
+          PY
       - name: Teste eine echte deutsche KI-Stimme (ohne Login)
         continue-on-error: true
         run: |
@@ -66,7 +81,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
       OLLAMA_MODEL: "qwen2.5:1.5b"
       OLLAMA_BASE_URL: "http://127.0.0.1:11434"
       DATABASE_URL: "sqlite:///moneyprinter.db"
@@ -103,13 +117,6 @@ jobs:
                   value = str(request.get(name) or default).replace("\r", " ").replace("\n", " ")
                   f.write(f"{environment_name}={value}\n")
           PY
-      - name: Pruefe API-Zugangsdaten
-        shell: bash
-        run: |
-          if [ -z "$PEXELS_API_KEY" ]; then
-            echo "::error::Fehlendes GitHub Actions Secret: PEXELS_API_KEY. Unter Settings > Secrets and variables > Actions einrichten."
-            exit 1
-          fi
       - name: Installiere FFmpeg und ImageMagick
         run: |
           sudo apt-get update
@@ -164,6 +171,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MoneyPrinter-Video
-          path: output.mp4
+          path: |
+            output.mp4
+            ATTRIBUTION.md
           if-no-files-found: error
           retention-days: 7

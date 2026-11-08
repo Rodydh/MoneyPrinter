@@ -6,9 +6,7 @@ Use `.env.example` as your template.
 
 ## Required
 
-| Variable | Description |
-|---|---|
-| `PEXELS_API_KEY` | API key used to fetch stock video clips. |
+There are no mandatory media or voice API keys. Wikimedia Commons provides freely licensed video and still-image media, which MoneyPrinter converts to video clips when necessary. Commons availability depends on the video topic and network access. The generated `ATTRIBUTION.md` must accompany reuse of the finished video (creator and license information).
 
 ## Speech
 

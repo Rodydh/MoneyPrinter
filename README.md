@@ -34,6 +34,10 @@ Docs are centralized in [`docs/`](docs/README.md):
 - [Testing](docs/testing.md)
 - [Troubleshooting](docs/troubleshooting.md)
 
+## Wikimedia Commons video footage (no Pexels key)
+
+This fork sources freely licensed footage and pictures from Wikimedia Commons. Pictures are converted into portrait video clips when video footage is scarce. The output includes `ATTRIBUTION.md` with source, creator and license details. Always comply with the applicable license (including ShareAlike when relevant).
+
 ## FAQ 🤔
 
 ### Which AI provider does MoneyPrinter use?

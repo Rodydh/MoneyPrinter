@@ -48,9 +48,7 @@ Copy-Item .env.example .env
 
 Set required values in `.env`:
 
-- `PEXELS_API_KEY` (video footage)
-
-The voice uses Edge-TTS; no TikTok session or voice API key is needed.
+No keys are required for video footage (Wikimedia Commons) or narration (Edge-TTS). Always follow the credits and license terms in `ATTRIBUTION.md`.
 
 See [Configuration](configuration.md) for all variables.
 

@@ -15,6 +15,7 @@ from uuid import uuid4
 from gpt import generate_metadata, generate_script, get_search_terms
 from logstream import log
 from search import search_for_stock_videos
+from commons_download import download_media, write_credits
 from speech import tts
 from utils import (
     BASE_DIR,
@@ -24,7 +25,7 @@ from utils import (
     TEMP_DIR,
     choose_random_song,
 )
-from video import combine_videos, generate_subtitles, generate_video, save_video
+from video import combine_videos, generate_subtitles, generate_video
 from youtube import upload_video
 
 
@@ -87,35 +88,54 @@ def run_generation_pipeline(
         data["videoSubject"], amount_of_stock_videos, script, ai_model
     )
 
-    video_urls = []
-    it = 15
-    min_dur = 10
+    media_items = []
+    selected_urls = set()
+    max_results_per_term = 12
 
     for search_term in search_terms:
         guard_cancelled()
-        found_urls = search_for_stock_videos(
-            search_term, os.getenv("PEXELS_API_KEY"), it, min_dur
-        )
-        for url in found_urls:
-            if url not in video_urls:
-                video_urls.append(url)
+        for media in search_for_stock_videos(search_term, it=max_results_per_term):
+            if media["url"] not in selected_urls:
+                media_items.append(media)
+                selected_urls.add(media["url"])
                 break
 
-    if not video_urls:
-        raise RuntimeError("No videos found to download.")
+    if not media_items:
+        # Search using original topic as a fallback if model-generated keywords are too narrow.
+        media_items = search_for_stock_videos(data["videoSubject"], it=12)
+
+    if not media_items:
+        raise RuntimeError("No freely licensed Wikimedia Commons media found for this topic.")
 
     video_paths = []
-    emit(f"[+] Downloading {len(video_urls)} videos...", "info")
-
-    for video_url in video_urls:
+    used_media = []
+    emit(f"[+] Wikimedia Commons: downloading {len(media_items)} media files...", "info")
+    for media in media_items:
         guard_cancelled()
         try:
-            saved_video_path = save_video(video_url)
-            video_paths.append(saved_video_path)
-        except Exception:
-            emit(f"[-] Could not download video: {video_url}", "error")
+            path = download_media(media)
+            video_paths.append(path)
+            used_media.append(media)
+        except Exception as exc:
+            emit(f"[-] Unable to download {media.get('title')}: {exc}", "warning")
 
-    emit("[+] Videos downloaded!", "success")
+    if not video_paths:
+        # Retry other results from a broad topic search.
+        for media in search_for_stock_videos(data["videoSubject"], it=12):
+            guard_cancelled()
+            if media["url"] in selected_urls:
+                continue
+            try:
+                video_paths.append(download_media(media))
+                used_media.append(media)
+                break
+            except Exception as exc:
+                emit(f"[-] Media fallback failed: {exc}", "warning")
+
+    if not video_paths:
+        raise RuntimeError("Unable to download any usable Wikimedia Commons media.")
+    write_credits(used_media, PROJECT_ROOT / "ATTRIBUTION.md")
+    emit("[+] Footage ready; creator and license credits saved.", "success")
     emit("[+] Script generated!", "success")
 
     guard_cancelled()
