@@ -61,11 +61,14 @@ def choose_random_song() -> Optional[str]:
         if not SONGS_DIR.exists():
             return None
 
-        songs = [
-            song
-            for song in SONGS_DIR.iterdir()
-            if song.is_file() and song.suffix.lower() == ".mp3"
-        ]
+        songs = sorted(
+            (
+                song
+                for song in SONGS_DIR.iterdir()
+                if song.is_file() and song.suffix.lower() == ".mp3"
+            ),
+            key=lambda song: song.name,
+        )
 
         if not songs:
             return None
