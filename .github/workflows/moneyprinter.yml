@@ -69,6 +69,7 @@ jobs:
           import subprocess
           import sys
           from pathlib import Path
+          from imageio_ffmpeg import get_ffmpeg_exe
           sys.path.insert(0, "Backend")
           from search import search_for_stock_videos
           from commons_download import download_media
@@ -80,9 +81,8 @@ jobs:
           for media in candidates[:5]:
               try:
                   path = download_media(media)
-                  subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
-                     "-show_entries", "stream=codec_name,width,height",
-                     "-of", "default=noprint_wrappers=1", path],
+                  subprocess.run([get_ffmpeg_exe(), "-v", "error", "-i", path,
+                     "-frames:v", "1", "-f", "null", "-"],
                      check=True, capture_output=True, text=True, timeout=30)
                   print("Valid video downloaded:", media["title"], Path(path).stat().st_size)
                   break
